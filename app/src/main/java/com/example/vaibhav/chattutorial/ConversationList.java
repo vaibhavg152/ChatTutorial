@@ -14,25 +14,38 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.vaibhav.chattutorial.util.ChatMessage;
 import com.example.vaibhav.chattutorial.util.ConvoPreview;
 import com.example.vaibhav.chattutorial.util.ConvoPreviewAdapter;
+import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.SharedPrefManager;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,10 +55,12 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class ConversationList extends AppCompatActivity {
     //constants
     private static final String TAG = "ConversationList";
+    private static final int REQUEST_CODE_SELECT_IMAGE = 999;
 
     //widgets
     private FloatingActionButton fabAddConvo;
@@ -53,13 +68,12 @@ public class ConversationList extends AppCompatActivity {
     private ImageView imgSearchIcon;
     private TextView tvMyName;
     private ListView listConvos;
-    private Button btnOptions;
+    private ImageButton btnOptions;
 
     //variables
     private ArrayList<ConvoPreview> arrayListConvoPreview;
     private ConvoPreviewAdapter adapter;
     private FirebaseUser user;
-    private Uri uriImage;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -71,8 +85,15 @@ public class ConversationList extends AppCompatActivity {
         StrictMode.setThreadPolicy(policy);
 
         initialise();
+        updateLastSeen();
 
-        setImage(imgMyProfPic,user.getPhotoUrl());
+        try {
+            Bitmap bitmap = ExtStorageManager.getInstance(this).getImageBitmap(ExtStorageManager.MY_IMAGE,ExtStorageManager.PATH_DP);
+            imgMyProfPic.setImageBitmap(bitmap);
+        } catch (IOException e) {
+            e.printStackTrace();
+            setImage(imgMyProfPic,user.getPhotoUrl());
+        }
 
         tvMyName.setText(user.getDisplayName());
 
@@ -96,7 +117,7 @@ public class ConversationList extends AppCompatActivity {
         btnOptions.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                loadOptions();
+                loadOptions(view);
             }
         });
 
@@ -107,15 +128,23 @@ public class ConversationList extends AppCompatActivity {
 
     }
 
+    private void updateLastSeen() {
+        Log.d(TAG, "updateLastSeen: ");
+
+        Date date = new Date();
+        String time = date.getHours()+":" + date.getMinutes() +"   "+ date.getDate() + " "+ ChatMessage.getMonthString(date.getMonth());
+        FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("lastSeen").setValue(time);
+    }
+
     private void initialise(){
         Log.d(TAG, "initialise: ");
 
         fabAddConvo   = (FloatingActionButton) findViewById(R.id.fabAddConvo);
-        imgMyProfPic  = (ImageView) findViewById(R.id.imgMyProfPic);
-        imgSearchIcon = (ImageView) findViewById(R.id.imgBtnSearchList);
-        tvMyName      = (TextView)  findViewById(R.id.txtMyName);
-        listConvos    = (ListView)  findViewById(R.id.lvConvo);
-        btnOptions    = (Button)    findViewById(R.id.btnOptions);
+        imgMyProfPic  = (ImageView)   findViewById(R.id.imgMyProfPic);
+        imgSearchIcon = (ImageView)   findViewById(R.id.imgBtnSearchList);
+        tvMyName      = (TextView)    findViewById(R.id.txtMyName);
+        listConvos    = (ListView)    findViewById(R.id.lvConvo);
+        btnOptions    = (ImageButton) findViewById(R.id.btnOptions);
 
         user = FirebaseAuth.getInstance().getCurrentUser();
         arrayListConvoPreview = SharedPrefManager.getInstance(this).getLastFewConersations(10);
@@ -126,11 +155,7 @@ public class ConversationList extends AppCompatActivity {
     private void setImage(ImageView imgMyProfPic, Uri photoUrl) {
         Log.d(TAG, "setImage: ");
         try {
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
             Bitmap bitmap = BitmapFactory.decodeStream(new URL(photoUrl.toString()).openConnection().getInputStream());
-//            bitmap.compress(Bitmap.CompressFormat.PNG,10,stream);
-//            byte[] bytes = stream.toByteArray();
-//            bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
             imgMyProfPic.setImageBitmap(bitmap);
         } catch (Exception e) {
             e.printStackTrace();
@@ -150,10 +175,96 @@ public class ConversationList extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void loadOptions() {
+    private void loadOptions(View view) {
         Log.d(TAG, "loadOptions: ");
 
-        startActivity(new Intent(ConversationList.this,OptionsActivity.class));
+        PopupMenu popupMenu = new PopupMenu(this,view,Gravity.AXIS_X_SHIFT);
+        popupMenu.getMenuInflater().inflate(R.menu.menu_options_convolist,popupMenu.getMenu());
+        popupMenu.show();
+
+        popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem menuItem) {
+                Log.d(TAG, "onMenuItemClick: ");
+
+                switch (menuItem.getItemId()){
+                    case R.id.optDP :       changeDp(); break;
+                    case R.id.optSignOut :  signOut();  break;
+                }
+
+
+                return false;
+            }
+        });
+    }
+
+    private void changeDp() {
+        Log.d(TAG, "changeDp: ");
+
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        startActivityForResult(intent,REQUEST_CODE_SELECT_IMAGE);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, final Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        Log.d(TAG, "onActivityResult: ");
+        if (requestCode == REQUEST_CODE_SELECT_IMAGE && resultCode == RESULT_OK){
+            if (data != null && data.getData() != null){
+                Log.d(TAG, "onActivityResult: success");
+
+                final FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                final StorageReference storageReference = FirebaseStorage.getInstance().getReference().child("images/dp/"+user.getUid());
+
+                storageReference.putFile(data.getData()).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+
+                        storageReference.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+                            @Override
+                            public void onSuccess(final Uri uriImage) {
+
+                                UserProfileChangeRequest request = new UserProfileChangeRequest.Builder().setPhotoUri(uriImage).build();
+
+                                user.updateProfile(request).addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        if (task.isSuccessful()) {
+                                            Log.d(TAG, "onComplete: lets see");
+                                            Toast.makeText(ConversationList.this, "Profile picture updated", Toast.LENGTH_LONG).show();
+                                            FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("image")
+                                                    .setValue(uriImage.toString());
+                                            imgMyProfPic.setImageURI(data.getData());
+
+                                            try {
+                                                ExtStorageManager.getInstance(ConversationList.this).saveImage(data.getData(),10,
+                                                        ExtStorageManager.MY_IMAGE, ExtStorageManager.PATH_DP);
+                                            } catch (IOException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                        }
+                                        else Toast.makeText(ConversationList.this,"Failed",Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                            }
+                        });
+
+                    }
+                });
+
+            }
+        }
+    }
+
+    private void signOut() {
+        Log.d(TAG, "signOut: ");
+
+        FirebaseAuth.getInstance().signOut();
+        SharedPrefManager.getInstance(ConversationList.this).clearUserInfo();
         finish();
     }
 

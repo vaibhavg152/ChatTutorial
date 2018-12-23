@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ChatTutorial</string>
+    <string name="app_name">ChatsApp</string>
     <string name="convo">Conversations</string>
     <string name="defaultDPUri">android.resource://com.example.vaibhav.chattutorial/drawable/ic_person</string>
     <array name="months">

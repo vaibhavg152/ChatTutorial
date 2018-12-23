@@ -17,6 +17,7 @@ import android.widget.TextView;
 import com.example.vaibhav.chattutorial.R;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -45,10 +46,16 @@ public class ConvoPreviewAdapter extends ArrayAdapter<ConvoPreview> {
         TextView  txtMessage = (TextView)  convertView.findViewById(R.id.txtNewMsg);
 
         ConvoPreview preview = previewList.get(position);
+        try {
+            Bitmap bitmap = ExtStorageManager.getInstance(context).getImageBitmap(preview.getUserId(),ExtStorageManager.PATH_DP);
+            imgProfPic.setImageBitmap(bitmap);
+        } catch (IOException e) {
+            e.printStackTrace();
+            setImage(imgProfPic,preview.getImageUri());
+        }
 
         txtMessage.setText(preview.getLastMessage());
         txtName.setText(preview.getUserName());
-        setImage(imgProfPic,preview.getImageUri());
 
         return convertView;
     }
@@ -56,15 +63,11 @@ public class ConvoPreviewAdapter extends ArrayAdapter<ConvoPreview> {
     private void setImage(ImageView imgMyProfPic, Uri photoUrl) {
         Log.d(TAG, "setImage: ");
         try {
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
             Bitmap bitmap = BitmapFactory.decodeStream(new URL(photoUrl.toString()).openConnection().getInputStream());
-//            bitmap.compress(Bitmap.CompressFormat.PNG,10,stream);
-//            byte[] bytes = stream.toByteArray();
-//            bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
             imgMyProfPic.setImageBitmap(bitmap);
         } catch (Exception e) {
             e.printStackTrace();
-            imgMyProfPic.setImageDrawable(context.getDrawable(R.drawable.ic_person));
+
         }
     }
 

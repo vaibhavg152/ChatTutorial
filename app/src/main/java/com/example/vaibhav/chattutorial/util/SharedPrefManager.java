@@ -16,7 +16,6 @@ public class SharedPrefManager {
     private static final String TAG = "SharedPrefManager";
     private static final String SHARED_PREF_NAME = "FCMSPM";
     private static final String SHARED_PREF_NAME_USER = "userInfo";
-    private static final String TOKEN_KEY = "token_key";
     private static final String USER_KEY = "user_key";
     private static final String NUM_USER_KEY = "num_user";
 
@@ -43,18 +42,6 @@ public class SharedPrefManager {
         if (mInstance == null)
             mInstance = new SharedPrefManager(context);
         return mInstance;
-    }
-
-    public void storeToken(String token){
-        Log.d(TAG, "storeToken: ");
-
-        SharedPreferences.Editor editor = preferencesConvo.edit();
-        editor.putString(TOKEN_KEY,token);
-        editor.apply();
-    }
-
-    public String getToken(){
-        return preferencesConvo.getString(TOKEN_KEY,null);
     }
 
     public void addConversation(ConvoPreview preview){
@@ -125,6 +112,11 @@ public class SharedPrefManager {
                 ? mContext.getResources().getString(R.string.defaultDPUri)
                 : user.getPhotoUrl().toString() );
 
+    }
+
+    public void clearConvoInfo() {
+        Log.d(TAG, "clearConvoInfo: ");
+        preferencesConvo.edit().clear();
     }
 
     public void clearUserInfo() {

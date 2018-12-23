@@ -45,6 +45,8 @@ public class SignInActivity extends AppCompatActivity {
         if (myAuth.getCurrentUser() == null) {
             Log.d(TAG, "initialize: null");
 
+            SharedPrefManager.getInstance(SignInActivity.this).clearUserInfo();
+            SharedPrefManager.getInstance(SignInActivity.this).clearConvoInfo();
             Intent signInIntent = myAuthUI.createSignInIntentBuilder()
                     .setAvailableProviders(Arrays.asList(new AuthUI.IdpConfig.EmailBuilder().build()))
                     .build();

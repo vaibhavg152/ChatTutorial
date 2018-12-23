@@ -18,13 +18,18 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.example.vaibhav.chattutorial.util.ConvoPreview;
+import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.SharedPrefManager;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 public class AllPeopleList extends AppCompatActivity {
@@ -38,6 +43,7 @@ public class AllPeopleList extends AppCompatActivity {
 
     //variables
     private DatabaseReference reference;
+    private StorageReference storageReference;
     private ArrayList<String> arrayListPeople, arrayListId, arrayListName, arrayListEmail, arrayListImg;
     private ArrayAdapter adapter;
 
@@ -59,6 +65,7 @@ public class AllPeopleList extends AppCompatActivity {
         arrayListEmail  = new ArrayList<>();
         arrayListImg    = new ArrayList<>();
         reference = FirebaseDatabase.getInstance().getReference();
+        storageReference = FirebaseStorage.getInstance().getReference();
 
         lvAllPeople = (ListView) findViewById(R.id.lvPeople);
         etSearch    = (EditText) findViewById(R.id.etSearchPeople);
@@ -125,6 +132,10 @@ public class AllPeopleList extends AppCompatActivity {
         Log.d(TAG, "addConvoToSharedPref: "+preview.getUserId()+":"+arrayListId.get(position));
 
         SharedPrefManager.getInstance(AllPeopleList.this).addConversation(preview);
+        storageReference = FirebaseStorage.getInstance().getReferenceFromUrl(preview.getImageUri().toString());
+        storageReference.getFile(
+                new File(ExtStorageManager.PATH_DP+"/"+preview.getUserId()));
+
         Toast.makeText(AllPeopleList.this,"Conversation with "+arrayListName.get(position)+
                 " added to the list on conversations page. Go back to start conversation",
                 Toast.LENGTH_SHORT).show();

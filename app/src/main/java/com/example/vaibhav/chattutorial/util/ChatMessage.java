@@ -5,13 +5,15 @@ import java.util.Date;
 
 public class ChatMessage {
 
+    private boolean isRead;
     private String  msgSender;
     private String  msgText;
     private boolean isSent;
     private String  msgTime;
 
-    public ChatMessage(String msgUser, String msgText, boolean isSent, String msgTime) {
-        this.msgSender = msgUser;
+    public ChatMessage(boolean isRead, String msgSender, String msgText, boolean isSent, String msgTime) {
+        this.isRead = isRead;
+        this.msgSender = msgSender;
         this.msgText = msgText;
         this.isSent = isSent;
         this.msgTime = msgTime;
@@ -22,6 +24,7 @@ public class ChatMessage {
         msgText = text;
         isSent  = sent;
         msgTime = getCurrentTime();
+        isRead = false;
     }
 
     private String getCurrentTime() {
@@ -35,7 +38,7 @@ public class ChatMessage {
         return day+dateStr+month+time;
     }
 
-    private String getMonthString(int month) {
+    public static String getMonthString(int month) {
         switch (month){
             case 1:  return "Jan";
             case 2:  return "Feb";
@@ -52,7 +55,7 @@ public class ChatMessage {
         }
     }
 
-    private String getDayOfWeek(int day) {
+    public static String getDayOfWeek(int day) {
         switch (day){
             case 0:  return "Sunday";
             case 1:  return "Monday";

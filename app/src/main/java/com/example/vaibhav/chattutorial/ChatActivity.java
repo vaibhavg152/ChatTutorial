@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import com.example.vaibhav.chattutorial.util.ChatMessage;
 import com.example.vaibhav.chattutorial.util.ConvoPreview;
+import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.MessagesListAdapter;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -28,7 +29,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -65,8 +66,8 @@ public class ChatActivity extends AppCompatActivity {
                 incomingIntent.getStringExtra("id"),Uri.parse(incomingIntent.getStringExtra("image")));
         Log.d(TAG, "onCreate: id is "+person.getUserId());
 
-
         initialise();
+        reference.child(user.getUid()).child("lastSeen").setValue("Online");
     }
 
     private void initialise() {
@@ -88,9 +89,23 @@ public class ChatActivity extends AppCompatActivity {
         user = FirebaseAuth.getInstance().getCurrentUser();
 
         loadMessages();
-        setImage(imgProfPic, person.getImageUri());
+        setImage(imgProfPic, person.getImageUri(),person.getUserId());
         tvName.setText(person.getUserName());
-        tvActivity.setText("Online");
+        reference.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                try {
+                    tvActivity.setText(dataSnapshot.child(person.getUserId()).child("lastSeen").getValue(String.class));
+                }catch (Exception e){
+                    tvActivity.setText("Last Seen not found. :(");
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
 
         fabSend.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -98,8 +113,6 @@ public class ChatActivity extends AppCompatActivity {
                 sendMsg();
             }
         });
-        reference.child(user.getUid()).child(this.getResources().getString(R.string.convo)).child(person.getUserId())
-                .push().setValue(new ChatMessage(user.getDisplayName(),"wow",false));
 
     }
 
@@ -124,7 +137,7 @@ public class ChatActivity extends AppCompatActivity {
             Log.d(TAG, "sendMsg: doneReceiving "+person.getUserId());
             DatabaseReference curMsgReceived = reference.child(person.getUserId())
                     .child(this.getResources().getString(R.string.convo)).child(user.getUid());
-            curMsgReceived.push().setValue(new ChatMessage(user.getUid(),text,false,msg.getMsgTime()));
+            curMsgReceived.push().setValue(new ChatMessage(false,user.getUid(),text,false,msg.getMsgTime()));
 
 
         }else Toast.makeText(ChatActivity.this,"Please wait until the previous messages are loaded. :)",Toast.LENGTH_SHORT).show();
@@ -147,13 +160,17 @@ public class ChatActivity extends AppCompatActivity {
                 for (DataSnapshot dsMsg : dsConvo.getChildren()) {
 
                     if (dsMsg.hasChild("msgText")) {
-                        messagesArrayList.add(new ChatMessage(person.getUserName(), dsMsg.child("msgText").getValue().toString(),
-                                dsMsg.child("sent").getValue(Boolean.class), dsMsg.child("msgTime").getValue(String.class)));
+                        boolean isSent = dsMsg.child("sent").getValue(Boolean.class);
+
+                        messagesArrayList.add(new ChatMessage(
+                                dsMsg.child("isRead").getValue(Boolean.class),
+                                person.getUserName(), dsMsg.child("msgText").getValue().toString(),
+                                isSent, dsMsg.child("msgTime").getValue(String.class)));
                     }
 
                 }
                 if (messagesArrayList.isEmpty())
-                    etInputMessage.setText("Send a message to start the conversation! :)");
+                    etInputMessage.setHint("Send a message to start the conversation! :)");
                 adapter = new MessagesListAdapter(ChatActivity.this,R.layout.lv_messages_item_sent,
                         R.layout.lv_messages_item_recieved,messagesArrayList);
                 lvMessages.setAdapter(adapter);
@@ -164,18 +181,20 @@ public class ChatActivity extends AppCompatActivity {
         });
     }
 
-    private void setImage(ImageView imgMyProfPic, Uri photoUrl) {
+    private void setImage(ImageView imgMyProfPic, Uri photoUrl, String imageName) {
         Log.d(TAG, "setImage: ");
+
         try {
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            Bitmap bitmap = BitmapFactory.decodeStream(new URL(photoUrl.toString()).openConnection().getInputStream());
-//            bitmap.compress(Bitmap.CompressFormat.PNG,10,stream);
-//            byte[] bytes = stream.toByteArray();
-//            bitmap = BitmapFactory.decodeByteArray(bytes,0,bytes.length);
-            imgMyProfPic.setImageBitmap(bitmap);
-        } catch (Exception e) {
-            e.printStackTrace();
-            imgMyProfPic.setImageDrawable(getDrawable(R.drawable.ic_person));
+            Bitmap bitmap = ExtStorageManager.getInstance(this).getImageBitmap(imageName,ExtStorageManager.PATH_DP);
+            imgProfPic.setImageBitmap(bitmap);
+        }catch (IOException e) {
+            try {
+                Bitmap bitmap = BitmapFactory.decodeStream(new URL(photoUrl.toString()).openConnection().getInputStream());
+                imgMyProfPic.setImageBitmap(bitmap);
+            } catch (Exception e2) {
+                e2.printStackTrace();
+                imgMyProfPic.setImageDrawable(getDrawable(R.drawable.ic_person));
+            }
         }
     }
 
