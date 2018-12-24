@@ -2,13 +2,13 @@ package com.example.vaibhav.chattutorial.util;
 
 import android.net.Uri;
 
-public class ConvoPreview {
+public class ChatsAppUser {
     private String lastMessage;
     private String userName;
     private String userId;
     private Uri imageUri;
 
-    public ConvoPreview(String lastMessage, String name, String userId, Uri imageUri) {
+    public ChatsAppUser(String lastMessage, String name, String userId, Uri imageUri) {
         this.lastMessage = lastMessage;
         this.userId = userId;
         this.imageUri = imageUri;

@@ -8,7 +8,7 @@
     <android.support.design.widget.AppBarLayout
         android:id="@+id/appBar"
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="70dp"
         android:layout_weight="9"
         android:orientation="vertical">
 
@@ -17,18 +17,25 @@
             android:layout_height="match_parent"
             android:orientation="horizontal">
 
-            <ImageView
-                android:id="@+id/imgMyProfPic"
+            <android.support.v7.widget.CardView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="50dp"
                 android:layout_gravity="center"
                 android:layout_marginLeft="10dp"
-                android:layout_marginTop="5dp"
-                android:layout_marginRight="5dp"
-                android:layout_marginBottom="5dp"
+                android:layout_marginRight="2dp"
                 android:layout_weight="80"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_person" />
+                android:shape="ring"
+                app:cardCornerRadius="25dp">
+
+                <ImageView
+                    android:id="@+id/imgMyProfPic"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_person" />
+
+            </android.support.v7.widget.CardView>
 
             <TextView
                 android:id="@+id/txtMyName"
@@ -36,7 +43,7 @@
                 android:layout_height="match_parent"
                 android:layout_gravity="center"
                 android:layout_marginLeft="15dp"
-                android:layout_weight="25"
+                android:layout_weight="30"
                 android:gravity="center"
                 android:singleLine="true"
                 android:text="Your_Name_Here"
@@ -56,14 +63,14 @@
 
             <ImageButton
                 android:id="@+id/btnOptions"
-                android:layout_weight="85"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
                 android:layout_alignTop="@+id/fabAddConvo"
-                android:padding="0dp"
+                android:layout_gravity="center"
+                android:layout_weight="85"
                 android:background="@drawable/icons_menu_vertical"
                 android:onClick="showPopup"
+                android:padding="0dp"
                 android:text="Options" />
 
         </LinearLayout>
@@ -71,10 +78,10 @@
     </android.support.design.widget.AppBarLayout>
 
     <ListView
-        android:layout_below="@+id/appBar"
         android:id="@+id/lvConvo"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@+id/appBar"
         android:layout_weight="1" />
 
     <EditText

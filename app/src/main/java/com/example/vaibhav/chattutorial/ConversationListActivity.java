@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.StrictMode;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
@@ -15,11 +14,9 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -29,7 +26,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.vaibhav.chattutorial.util.ChatMessage;
-import com.example.vaibhav.chattutorial.util.ConvoPreview;
+import com.example.vaibhav.chattutorial.util.ChatsAppUser;
 import com.example.vaibhav.chattutorial.util.ConvoPreviewAdapter;
 import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.SharedPrefManager;
@@ -39,27 +36,19 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class ConversationList extends AppCompatActivity {
+public class ConversationListActivity extends AppCompatActivity {
     //constants
-    private static final String TAG = "ConversationList";
+    private static final String TAG = "ConvListActivity";
     private static final int REQUEST_CODE_SELECT_IMAGE = 999;
 
     //widgets
@@ -71,7 +60,7 @@ public class ConversationList extends AppCompatActivity {
     private ImageButton btnOptions;
 
     //variables
-    private ArrayList<ConvoPreview> arrayListConvoPreview;
+    private ArrayList<ChatsAppUser> arrayListChatsAppUser;
     private ConvoPreviewAdapter adapter;
     private FirebaseUser user;
 
@@ -97,7 +86,7 @@ public class ConversationList extends AppCompatActivity {
 
         tvMyName.setText(user.getDisplayName());
 
-        adapter = new ConvoPreviewAdapter(this,R.layout.listview_convo_preview, arrayListConvoPreview);
+        adapter = new ConvoPreviewAdapter(this,R.layout.listview_convo_preview, arrayListChatsAppUser);
         listConvos.setAdapter(adapter);
 
         fabAddConvo.setOnClickListener(new View.OnClickListener() {
@@ -128,12 +117,13 @@ public class ConversationList extends AppCompatActivity {
 
     }
 
-    private void updateLastSeen() {
-        Log.d(TAG, "updateLastSeen: ");
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
 
-        Date date = new Date();
-        String time = date.getHours()+":" + date.getMinutes() +"   "+ date.getDate() + " "+ ChatMessage.getMonthString(date.getMonth());
-        FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("lastSeen").setValue(time);
+        arrayListChatsAppUser = SharedPrefManager.getInstance(this).getLastFewConersations(10);
+        adapter = new ConvoPreviewAdapter(this,R.layout.listview_convo_preview, arrayListChatsAppUser);
+        listConvos.setAdapter(adapter);
     }
 
     private void initialise(){
@@ -147,9 +137,17 @@ public class ConversationList extends AppCompatActivity {
         btnOptions    = (ImageButton) findViewById(R.id.btnOptions);
 
         user = FirebaseAuth.getInstance().getCurrentUser();
-        arrayListConvoPreview = SharedPrefManager.getInstance(this).getLastFewConersations(10);
-        arrayListConvoPreview.add(new ConvoPreview("No new Messages here","Robert","abc",
+        arrayListChatsAppUser = SharedPrefManager.getInstance(this).getLastFewConersations(10);
+        arrayListChatsAppUser.add(new ChatsAppUser("No new Messages here","Robert","abc",
                 Uri.parse(getResources().getString(R.string.defaultDPUri))));
+    }
+
+    private void updateLastSeen() {
+        Log.d(TAG, "updateLastSeen: ");
+
+        Date date = new Date();
+        String time = date.getHours()+":" + date.getMinutes() +" ("+ date.getDate() + " "+ ChatMessage.getMonthString(date.getMonth())+")";
+        FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("lastSeen").setValue(time);
     }
 
     private void setImage(ImageView imgMyProfPic, Uri photoUrl) {
@@ -166,8 +164,8 @@ public class ConversationList extends AppCompatActivity {
     private void openConversation(int position) {
         Log.d(TAG, "openConversation: ");
 
-        ConvoPreview preview = arrayListConvoPreview.get(position);
-        Intent intent = new Intent(ConversationList.this,ChatActivity.class);
+        ChatsAppUser preview = arrayListChatsAppUser.get(position);
+        Intent intent = new Intent(ConversationListActivity.this,ChatActivity.class);
         intent.putExtra("name",preview.getUserName());
         intent.putExtra("id",preview.getUserId());
         intent.putExtra("image",preview.getImageUri().toString());
@@ -234,20 +232,20 @@ public class ConversationList extends AppCompatActivity {
                                     public void onComplete(@NonNull Task<Void> task) {
                                         if (task.isSuccessful()) {
                                             Log.d(TAG, "onComplete: lets see");
-                                            Toast.makeText(ConversationList.this, "Profile picture updated", Toast.LENGTH_LONG).show();
+                                            Toast.makeText(ConversationListActivity.this, "Profile picture updated", Toast.LENGTH_LONG).show();
                                             FirebaseDatabase.getInstance().getReference().child("users").child(user.getUid()).child("image")
                                                     .setValue(uriImage.toString());
                                             imgMyProfPic.setImageURI(data.getData());
 
                                             try {
-                                                ExtStorageManager.getInstance(ConversationList.this).saveImage(data.getData(),10,
+                                                ExtStorageManager.getInstance(ConversationListActivity.this).saveImage(data.getData(),10,
                                                         ExtStorageManager.MY_IMAGE, ExtStorageManager.PATH_DP);
                                             } catch (IOException e) {
                                                 e.printStackTrace();
                                             }
 
                                         }
-                                        else Toast.makeText(ConversationList.this,"Failed",Toast.LENGTH_LONG).show();
+                                        else Toast.makeText(ConversationListActivity.this,"Failed",Toast.LENGTH_LONG).show();
                                     }
                                 });
                             }
@@ -264,7 +262,7 @@ public class ConversationList extends AppCompatActivity {
         Log.d(TAG, "signOut: ");
 
         FirebaseAuth.getInstance().signOut();
-        SharedPrefManager.getInstance(ConversationList.this).clearUserInfo();
+        SharedPrefManager.getInstance(ConversationListActivity.this).clearUserInfo();
         finish();
     }
 
@@ -291,9 +289,8 @@ public class ConversationList extends AppCompatActivity {
     private void addConversation() {
         Log.d(TAG, "addConversation: ");
 
-        Intent intent = new Intent(ConversationList.this,AllPeopleList.class);
+        Intent intent = new Intent(ConversationListActivity.this,AllPeopleListActivity.class);
         startActivity(intent);
-        finish();
     }
 
 }

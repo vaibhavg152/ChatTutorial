@@ -7,13 +7,16 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.SharedPrefManager;
 import com.firebase.ui.auth.AuthUI;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
 
+import java.io.File;
 import java.util.Arrays;
 
 public class SignInActivity extends AppCompatActivity {
@@ -47,6 +50,8 @@ public class SignInActivity extends AppCompatActivity {
 
             SharedPrefManager.getInstance(SignInActivity.this).clearUserInfo();
             SharedPrefManager.getInstance(SignInActivity.this).clearConvoInfo();
+            ExtStorageManager.getInstance(SignInActivity.this).removeMyDp();
+
             Intent signInIntent = myAuthUI.createSignInIntentBuilder()
                     .setAvailableProviders(Arrays.asList(new AuthUI.IdpConfig.EmailBuilder().build()))
                     .build();
@@ -54,9 +59,8 @@ public class SignInActivity extends AppCompatActivity {
         }
         else {
             FirebaseUser user = myAuth.getCurrentUser();
-            //create this method
             SharedPrefManager.getInstance(SignInActivity.this).saveLoginInfo(user);
-            startActivity(new Intent(SignInActivity.this, ConversationList.class));
+            startActivity(new Intent(SignInActivity.this, ConversationListActivity.class));
             finish();
         }
     }
@@ -82,8 +86,10 @@ public class SignInActivity extends AppCompatActivity {
                         ? getResources().getString(R.string.defaultDPUri)
                         : user.getPhotoUrl().toString() );
 
+                FirebaseStorage.getInstance().getReference().child("images/dp/").child(userId).
+                        getFile(new File(ExtStorageManager.PATH_DP+"/"+ExtStorageManager.MY_IMAGE));
                 SharedPrefManager.getInstance(SignInActivity.this).saveLoginInfo(user);
-                startActivity(new Intent(SignInActivity.this, ConversationList.class));
+                startActivity(new Intent(SignInActivity.this, ConversationListActivity.class));
                 finish();
             }
             else Log.d(TAG, "onActivityResult: "+resultCode);

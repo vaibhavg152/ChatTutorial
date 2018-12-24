@@ -19,10 +19,15 @@ public class ChatMessage {
         this.msgTime = msgTime;
     }
 
+    public boolean isRead() { return isRead; }
+
+    public void setRead(boolean read) { isRead = read; }
+
     public ChatMessage(String user, String text, boolean sent) {
         msgSender = user;
         msgText = text;
         isSent  = sent;
+
         msgTime = getCurrentTime();
         isRead = false;
     }

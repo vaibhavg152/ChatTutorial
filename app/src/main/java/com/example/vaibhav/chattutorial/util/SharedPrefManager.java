@@ -25,7 +25,7 @@ public class SharedPrefManager {
     private static SharedPrefManager mInstance;
     private static SharedPreferences preferencesConvo;
     private static SharedPreferences preferencesUSerInfo;
-    private ArrayList<ConvoPreview> previewArrayList;
+    private ArrayList<ChatsAppUser> previewArrayList;
 
     public SharedPrefManager(Context context) {
         Log.d(TAG, "SharedPrefManager: ");
@@ -44,7 +44,7 @@ public class SharedPrefManager {
         return mInstance;
     }
 
-    public void addConversation(ConvoPreview preview){
+    public void addConversation(ChatsAppUser preview){
         Log.d(TAG, "addConversation: ");
 
         if (previewArrayList.contains(preview)){
@@ -64,7 +64,7 @@ public class SharedPrefManager {
         numUsers++;
     }
 
-    public ConvoPreview getConversation(int sno){
+    public ChatsAppUser getConversation(int sno){
         Log.d(TAG, "getConversation: ");
 
         if (sno > numUsers)
@@ -74,12 +74,12 @@ public class SharedPrefManager {
         String name = preferencesConvo.getString(USER_KEY + sno + "name","");
         String uri = preferencesConvo.getString(USER_KEY + sno + "uri", "");
 
-        return new ConvoPreview(msg, name, id, Uri.parse(uri));
+        return new ChatsAppUser(msg, name, id, Uri.parse(uri));
     }
 
-    public ArrayList<ConvoPreview> getLastFewConersations(int numConvos){
+    public ArrayList<ChatsAppUser> getLastFewConersations(int numConvos){
         Log.d(TAG, "getLastFewConersations: "+numConvos);
-        ArrayList<ConvoPreview> result = new ArrayList<>();
+        ArrayList<ChatsAppUser> result = new ArrayList<>();
 
         for(int i = 1; i<=numConvos; i++){
             if (i>numUsers) break;
@@ -88,10 +88,10 @@ public class SharedPrefManager {
         return result;
     }
 
-    public ArrayList<ConvoPreview> getAllConversations(){
+    public ArrayList<ChatsAppUser> getAllConversations(){
         Log.d(TAG, "getAllConversations: ");
 
-        ArrayList<ConvoPreview> result = new ArrayList<>();
+        ArrayList<ChatsAppUser> result = new ArrayList<>();
         for (int i = numUsers - 1; i >= 0; i--){
             result.add(getConversation(i));
         }

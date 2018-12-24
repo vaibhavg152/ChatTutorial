@@ -1,5 +1,7 @@
 package com.example.vaibhav.chattutorial;
 
+import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -18,7 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.vaibhav.chattutorial.util.ChatMessage;
-import com.example.vaibhav.chattutorial.util.ConvoPreview;
+import com.example.vaibhav.chattutorial.util.ChatsAppUser;
 import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.MessagesListAdapter;
 import com.google.firebase.auth.FirebaseAuth;
@@ -29,7 +31,6 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -49,7 +50,7 @@ public class ChatActivity extends AppCompatActivity {
     private DatabaseReference reference;
     private FirebaseUser user;
     private MessagesListAdapter adapter;
-    private ConvoPreview person;
+    private ChatsAppUser Sender;
     private ArrayList<ChatMessage> messagesArrayList;
     private ArrayList<Integer> sentPosArrayList;
     private long numMessages = 0;
@@ -62,9 +63,9 @@ public class ChatActivity extends AppCompatActivity {
         Log.d(TAG, "onCreate: ");
 
         Intent incomingIntent = getIntent();
-        person = new ConvoPreview("",incomingIntent.getStringExtra("name"),
+        Sender = new ChatsAppUser("",incomingIntent.getStringExtra("name"),
                 incomingIntent.getStringExtra("id"),Uri.parse(incomingIntent.getStringExtra("image")));
-        Log.d(TAG, "onCreate: id is "+person.getUserId());
+        Log.d(TAG, "onCreate: id is "+ Sender.getUserId());
 
         initialise();
         reference.child(user.getUid()).child("lastSeen").setValue("Online");
@@ -89,16 +90,27 @@ public class ChatActivity extends AppCompatActivity {
         user = FirebaseAuth.getInstance().getCurrentUser();
 
         loadMessages();
-        setImage(imgProfPic, person.getImageUri(),person.getUserId());
-        tvName.setText(person.getUserName());
+        setImage(imgProfPic, Sender.getImageUri(), Sender.getUserId());
+        imgProfPic.setClickable(true);
+        imgProfPic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) { openImage(ChatActivity.this, Sender);
+            }
+        });
+        tvName.setText(Sender.getUserName());
+
         reference.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                String lastSeen;
                 try {
-                    tvActivity.setText(dataSnapshot.child(person.getUserId()).child("lastSeen").getValue(String.class));
+                    lastSeen = dataSnapshot.child(Sender.getUserId()).child("lastSeen").getValue(String.class);
+                    if (!lastSeen.equals("Online"))
+                        lastSeen = "Last seen at "+lastSeen;
                 }catch (Exception e){
-                    tvActivity.setText("Last Seen not found. :(");
+                    lastSeen = "Last Seen not found. :(";
                 }
+                tvActivity.setText(lastSeen);
             }
 
             @Override
@@ -130,12 +142,12 @@ public class ChatActivity extends AppCompatActivity {
             //storing record for sender
             Log.d(TAG, "sendMsg: doneSending");
             DatabaseReference curMsg = reference.child(user.getUid())
-                    .child(this.getResources().getString(R.string.convo)).child(person.getUserId());
+                    .child(this.getResources().getString(R.string.convo)).child(Sender.getUserId());
             curMsg.push().setValue(msg);
 
             //storing record for receiver
-            Log.d(TAG, "sendMsg: doneReceiving "+person.getUserId());
-            DatabaseReference curMsgReceived = reference.child(person.getUserId())
+            Log.d(TAG, "sendMsg: doneReceiving "+ Sender.getUserId());
+            DatabaseReference curMsgReceived = reference.child(Sender.getUserId())
                     .child(this.getResources().getString(R.string.convo)).child(user.getUid());
             curMsgReceived.push().setValue(new ChatMessage(false,user.getUid(),text,false,msg.getMsgTime()));
 
@@ -153,7 +165,7 @@ public class ChatActivity extends AppCompatActivity {
                 Log.d(TAG, "onDataChange: ");
 
                 DataSnapshot dsConvo = dataSnapshot.child(user.getUid()).child(getResources().getString(R.string.convo))
-                        .child(person.getUserId());
+                        .child(Sender.getUserId());
                 numMessages = dsConvo.getChildrenCount();
 
                 messagesArrayList.clear();
@@ -163,8 +175,8 @@ public class ChatActivity extends AppCompatActivity {
                         boolean isSent = dsMsg.child("sent").getValue(Boolean.class);
 
                         messagesArrayList.add(new ChatMessage(
-                                dsMsg.child("isRead").getValue(Boolean.class),
-                                person.getUserName(), dsMsg.child("msgText").getValue().toString(),
+                                dsMsg.child("read").getValue(Boolean.class),
+                                Sender.getUserName(), dsMsg.child("msgText").getValue().toString(),
                                 isSent, dsMsg.child("msgTime").getValue(String.class)));
                     }
 
@@ -174,10 +186,21 @@ public class ChatActivity extends AppCompatActivity {
                 adapter = new MessagesListAdapter(ChatActivity.this,R.layout.lv_messages_item_sent,
                         R.layout.lv_messages_item_recieved,messagesArrayList);
                 lvMessages.setAdapter(adapter);
+                scrollMyListViewToBottom();
                 isLoaded = true;
             }
             @Override
             public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
+    private void scrollMyListViewToBottom() {
+        lvMessages.post(new Runnable() {
+            @Override
+            public void run() {
+                // Select the last row so it will scroll into view...
+                lvMessages.setSelection(adapter.getCount() - 1);
+            }
         });
     }
 
@@ -187,7 +210,7 @@ public class ChatActivity extends AppCompatActivity {
         try {
             Bitmap bitmap = ExtStorageManager.getInstance(this).getImageBitmap(imageName,ExtStorageManager.PATH_DP);
             imgProfPic.setImageBitmap(bitmap);
-        }catch (IOException e) {
+        }catch (Exception e) {
             try {
                 Bitmap bitmap = BitmapFactory.decodeStream(new URL(photoUrl.toString()).openConnection().getInputStream());
                 imgMyProfPic.setImageBitmap(bitmap);
@@ -196,6 +219,20 @@ public class ChatActivity extends AppCompatActivity {
                 imgMyProfPic.setImageDrawable(getDrawable(R.drawable.ic_person));
             }
         }
+    }
+
+    private void openImage(Context context, ChatsAppUser preview) {
+        Log.d(TAG, "openImage: ");
+
+        Dialog dialog = new Dialog(context);
+        dialog.setContentView(R.layout.dialog_view_image);
+
+        ImageView imgProfPic = (ImageView) dialog.findViewById(R.id.imgProfPic);
+        TextView  txtName    = (TextView)  dialog.findViewById(R.id.txtPersonName);
+        txtName.setText(preview.getUserName());
+        setImage(imgProfPic,preview.getImageUri(),null);
+        dialog.show();
+
     }
 
 }

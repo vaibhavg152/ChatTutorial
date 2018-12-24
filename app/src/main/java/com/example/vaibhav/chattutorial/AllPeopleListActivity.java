@@ -17,7 +17,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.example.vaibhav.chattutorial.util.ConvoPreview;
+import com.example.vaibhav.chattutorial.util.ChatsAppUser;
 import com.example.vaibhav.chattutorial.util.ExtStorageManager;
 import com.example.vaibhav.chattutorial.util.SharedPrefManager;
 import com.google.firebase.database.DataSnapshot;
@@ -29,12 +29,11 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 
-public class AllPeopleList extends AppCompatActivity {
+public class AllPeopleListActivity extends AppCompatActivity {
     //constants
-    private static final String TAG = "AllPeopleList";
+    private static final String TAG = "AllPeopleListActivity";
 
     //widgets
     private ListView lvAllPeople;
@@ -89,26 +88,36 @@ public class AllPeopleList extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable editable) {}
         });
-        reference.addListenerForSingleValueEvent(new ValueEventListener() {
+        reference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 Log.d(TAG, "onDataChange: ");
 
-                for (DataSnapshot ds :dataSnapshot.child("users").getChildren()){
-                    String userId = ds.child("id"   ).getValue(String.class);
-                    String name   = ds.child("name" ).getValue(String.class);
-                    String email  = ds.child("email").getValue(String.class);
-                    String uriDP  = ds.child("image").getValue(String.class);
+                for (DataSnapshot ds :dataSnapshot.child("users").getChildren()) {
+                    String userId = ds.child("id").getValue(String.class);
+                    String name = ds.child("name").getValue(String.class);
+                    String email = ds.child("email").getValue(String.class);
+                    String uriDP = ds.child("image").getValue(String.class);
                     if (uriDP == null || uriDP.length() == 0)
                         uriDP = getResources().getString(R.string.defaultDPUri);
+
+                    boolean isAlreadyPresent = false;
+                    for (ChatsAppUser user : SharedPrefManager.getInstance(AllPeopleListActivity.this).getAllConversations()) {
+                        if (user.getUserId().equals(userId)) {
+                            isAlreadyPresent = true;
+                            break;
+                        }
+                    }
+
+                    if (isAlreadyPresent) continue;
 
                     arrayListName.add(name);
                     arrayListEmail.add(email);
                     arrayListId.add(userId);
                     arrayListImg.add(uriDP);
 
-                    arrayListPeople.add(name+" : "+email);
-                    adapter = new ArrayAdapter(AllPeopleList.this,android.R.layout.simple_list_item_1,arrayListPeople);
+                    arrayListPeople.add(name + " : " + email);
+                    adapter = new ArrayAdapter(AllPeopleListActivity.this, android.R.layout.simple_list_item_1, arrayListPeople);
                     lvAllPeople.setAdapter(adapter);
                 }
             }
@@ -126,17 +135,17 @@ public class AllPeopleList extends AppCompatActivity {
     private void addConvoToSharedPref(int position) {
         Log.d(TAG, "addConvoToSharedPref: ");
 
-        ConvoPreview preview = new ConvoPreview(arrayListEmail.get(position),arrayListName.get(position),
+        ChatsAppUser preview = new ChatsAppUser(arrayListEmail.get(position),arrayListName.get(position),
                 arrayListId.get(position),
                 Uri.parse(arrayListImg.get(position)));
         Log.d(TAG, "addConvoToSharedPref: "+preview.getUserId()+":"+arrayListId.get(position));
 
-        SharedPrefManager.getInstance(AllPeopleList.this).addConversation(preview);
+        SharedPrefManager.getInstance(AllPeopleListActivity.this).addConversation(preview);
         storageReference = FirebaseStorage.getInstance().getReferenceFromUrl(preview.getImageUri().toString());
         storageReference.getFile(
                 new File(ExtStorageManager.PATH_DP+"/"+preview.getUserId()));
 
-        Toast.makeText(AllPeopleList.this,"Conversation with "+arrayListName.get(position)+
+        Toast.makeText(AllPeopleListActivity.this,"Conversation with "+arrayListName.get(position)+
                 " added to the list on conversations page. Go back to start conversation",
                 Toast.LENGTH_SHORT).show();
 
@@ -146,7 +155,7 @@ public class AllPeopleList extends AppCompatActivity {
         arrayListImg.remove(position);
         arrayListId.remove(position);
 
-        adapter = new ArrayAdapter(AllPeopleList.this,android.R.layout.simple_list_item_1,arrayListPeople);
+        adapter = new ArrayAdapter(AllPeopleListActivity.this,android.R.layout.simple_list_item_1,arrayListPeople);
         lvAllPeople.setAdapter(adapter);
 
         btnDone.setVisibility(View.VISIBLE);
@@ -155,7 +164,7 @@ public class AllPeopleList extends AppCompatActivity {
     private void goBack() {
         Log.d(TAG, "goBack: ");
 
-        startActivity(new Intent(AllPeopleList.this,ConversationList.class));
+        startActivity(new Intent(AllPeopleListActivity.this,ConversationListActivity.class));
         finish();
     }
 }

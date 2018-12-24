@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -21,7 +20,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 
 public class ExtStorageManager {
     //constants
@@ -182,5 +180,26 @@ public class ExtStorageManager {
 
     private void toastMessage(String s) {
         Toast.makeText(context, s, Toast.LENGTH_SHORT).show();
+    }
+
+    public void removeMyDp() {
+        Log.d(TAG, "removeMyDp: ");
+
+        removeImage(PATH_DP,MY_IMAGE);
+    }
+
+    private void removeImage(String path, String imageName) {
+        Log.d(TAG, "removeImage: ");
+
+        File myDir = new File(path);
+        for (File file : myDir.listFiles()){
+            if (isPresent(file,imageName)){
+                file.delete();
+            }
+        }
+    }
+
+    private boolean isPresent(File file, String imageName) {
+        return file.getAbsolutePath().matches("(.*)"+imageName+ "(.*)");
     }
 }
